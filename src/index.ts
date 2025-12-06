@@ -269,7 +269,7 @@ async function checkIfEligibleForStarterItems(database: any, userId: number) {
 
   if (user.claimedStarterItems) return;
 
-  const items_collection = database.collection("items");
+  const items_collection = database.collection("cp");
   const starterItem = await items_collection.findOne(
     { tag: "starter" },
     { projection: { itemId: 1 } }
