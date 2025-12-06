@@ -291,6 +291,66 @@ async function checkIfEligibleForStarterItems(database: any, userId: number) {
 }
 
 
+app.get("/GetInventoryBulk", async (req, res) => {
+  try {
+    let UserIds = req.query.ids as string;
+
+    if (!UserIds) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid User IDs",
+      });
+    }
+
+    // Split by '-' and convert to numbers
+    let userIdArray = UserIds.split("-").map(Number);
+
+    if (userIdArray.some(isNaN)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid User IDs",
+      });
+    }
+
+    const client = await getMongoClient();
+    const db = client.db("cool");
+    const itemsCollection = db.collection("cp");
+
+    const docs = await itemsCollection
+      .find(
+        { "serials.u": { $in: userIdArray } },
+        { projection: { "serials.u": 1, "serials._id": 1, itemId: 1 } }
+      )
+      .toArray();
+
+    const data: Record<number, string[]> = {};
+
+    docs.forEach((item) => {
+      item.serials.forEach((serial_info: any, index: number) => {
+        if (serial_info && userIdArray.includes(serial_info.u)) {
+          const user_id = serial_info.u;
+          if (!data[user_id]) {
+            data[user_id] = [];
+          }
+          data[user_id].push(`${item.itemId}-${index + 1}`);
+        }
+      });
+    });
+
+    res.status(200).json({
+      status: "success",
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal Server Error",
+    });
+  }
+});
+
+
 
 // ======================================================================
 //                      EXPORT APP FOR VERCEL
