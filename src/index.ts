@@ -81,7 +81,7 @@ curl -X POST https://your-domain/update-item \\
 // ======================================================================
 //                🔥  NEW ROUTE USING YOUR SCRIPT 2 LOGIC 🔥
 // ======================================================================
-app.post("/update-item", async (req, res) => {
+app.post("/UpdateOne", async (req, res) => {
   let Processing = {}
 
   try {
@@ -132,6 +132,64 @@ app.post("/update-item", async (req, res) => {
     })
   }
 })
+
+app.post("/UpdateBulk", async (req, res) => {
+  try {
+    const client = await getMongoClient();
+    const collection = client.db("ArcadeHaven").collection("items");
+
+    const bulkOps = [];
+    const updates = req.body.updates;
+
+    if (!updates || !Array.isArray(updates)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Missing or invalid `updates` array in the request body",
+      });
+    }
+
+    updates.forEach((updateObj) => {
+      const filter = updateObj.filter;
+      const update = updateObj.update;
+
+      if (!filter || !update) return;
+
+      bulkOps.push({
+        updateOne: {
+          filter,
+          update,
+          upsert: false,
+        },
+      });
+    });
+
+    if (bulkOps.length === 0) {
+      return res.status(400).json({
+        status: "error",
+        message: "No valid updates found in the request",
+      });
+    }
+
+    const result = await collection.bulkWrite(bulkOps, { ordered: false });
+
+    const updatedDocumentsCount = result.modifiedCount;
+    const upsertedDocumentsCount = result.upsertedCount;
+
+    return res.status(200).json({
+      status: "success",
+      message: "Bulk update successful",
+      updatedDocumentsCount,
+      upsertedDocumentsCount,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal Server Error",
+    });
+  }
+});
+
 
 
 // ======================================================================
