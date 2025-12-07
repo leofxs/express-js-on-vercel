@@ -92,8 +92,6 @@ curl -X POST https://your-domain/update-item \\
 // ======================================================================
 app.post("/UpdateOne", async (req, res) => {
   try {
-    // Ensure MongoDB is connected
-
     if (!mongo_client) {
       return res.status(500).json({ status: "error", message: "MongoDB client not initialized" });
     }
@@ -103,7 +101,6 @@ app.post("/UpdateOne", async (req, res) => {
     const filter = req.body.filter;
     const update = req.body.update;
 
-    // Validate request body
     if (!filter || typeof filter !== "object" || !update || typeof update !== "object") {
       return res.status(400).json({
         status: "error",
@@ -111,23 +108,32 @@ app.post("/UpdateOne", async (req, res) => {
       });
     }
 
+    // Log for debugging
+    console.log("Filter:", filter);
+    console.log("Update:", update);
+
     // Logging special event if quantitySold is incremented
     try {
-      if (update["$inc"]?.quantitySold === 1) {
-        const item_id = filter.itemId;
-        const user_id = update["$push"]?.serials?.u;
-        if (user_id) console.log(`User_${user_id} bought Item_${item_id}!`);
+      const quantityInc = update["$inc"]?.quantitySold;
+      const serialsPush = update["$push"]?.serials;
+      if (quantityInc === 1 && serialsPush?.u) {
+        console.log(`User_${serialsPush.u} bought Item_${filter.itemId}!`);
       }
     } catch (err) {
-      console.log("Logging error:", err);
+      console.error("Logging error:", err);
     }
 
     // Perform the update
-    const result = await collection.findOneAndUpdate(filter, update, {
-      returnDocument: "after",
-    });
+    let result;
+    try {
+      result = await collection.findOneAndUpdate(filter, update, {
+        returnDocument: "after", // For MongoDB Node.js driver v4+
+      });
+    } catch (err) {
+      console.error("MongoDB update error:", err);
+      throw err; // rethrow to be caught by outer try/catch
+    }
 
-    // Check if document was found
     if (!result.value) {
       return res.status(404).json({
         status: "error",
@@ -135,14 +141,13 @@ app.post("/UpdateOne", async (req, res) => {
       });
     }
 
-    // Success response
     return res.status(200).json({
       status: "success",
       message: "Update successful",
       data: result.value,
     });
   } catch (error) {
-    console.error("Internal Error:", error);
+    console.error("Internal Error:", error); // This will now print the real error
     return res.status(500).json({
       status: "error",
       message: "Internal Server Error",
