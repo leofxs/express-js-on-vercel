@@ -96,6 +96,9 @@ app.post("/UpdateOne", async (req, res) => {
       return res.status(500).json({ status: "error", message: "MongoDB client not initialized" });
     }
 
+    console.log("REQ BODY:", JSON.stringify(req.body, null, 2));
+
+
     const collection = mongo_client.db("cool").collection("cp");
 
     const filter = req.body.filter;
