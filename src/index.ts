@@ -91,56 +91,63 @@ curl -X POST https://your-domain/update-item \\
 //                🔥  NEW ROUTE USING YOUR SCRIPT 2 LOGIC 🔥
 // ======================================================================
 app.post("/UpdateOne", async (req, res) => {
-  let Processing = {}
-
   try {
-    const collection = mongo_client.db("cool").collection("cp")
-    const filter = req.body.filter
-    const update = req.body.update
+    // Ensure MongoDB is connected
+    if (!mongo_client || !mongo_client.isConnected?.()) {
+      return res.status(500).json({ status: "error", message: "MongoDB not connected" });
+    }
 
-    if (!filter || !update) {
+    const collection = mongo_client.db("cool").collection("cp");
+
+    const filter = req.body.filter;
+    const update = req.body.update;
+
+    // Validate request body
+    if (!filter || typeof filter !== "object" || !update || typeof update !== "object") {
       return res.status(400).json({
         status: "error",
-        message: "Missing `update` or `filter` from JSON body",
-      })
+        message: "Missing or invalid `update` or `filter` in JSON body",
+      });
     }
 
-    // Special console logging event
+    // Logging special event if quantitySold is incremented
     try {
-      if (update["$inc"] && update["$inc"].quantitySold === 1) {
-        const item_id = filter.itemId
-        const user_id = update["$push"].serials.u
-        console.log(`User_${user_id} bought Item_${item_id}!`)
+      if (update["$inc"]?.quantitySold === 1) {
+        const item_id = filter.itemId;
+        const user_id = update["$push"]?.serials?.u;
+        if (user_id) console.log(`User_${user_id} bought Item_${item_id}!`);
       }
     } catch (err) {
-      console.log("Logging error:", err)
+      console.log("Logging error:", err);
     }
 
-    // Perform update
+    // Perform the update
     const result = await collection.findOneAndUpdate(filter, update, {
       returnDocument: "after",
-    })
+    });
 
-    if (!result) {
+    // Check if document was found
+    if (!result.value) {
       return res.status(404).json({
         status: "error",
         message: "No documents matched the filter",
-      })
+      });
     }
 
+    // Success response
     return res.status(200).json({
       status: "success",
       message: "Update successful",
-      data: result,
-    })
+      data: result.value,
+    });
   } catch (error) {
-    console.log("Internal Error:", error)
+    console.error("Internal Error:", error);
     return res.status(500).json({
       status: "error",
       message: "Internal Server Error",
-    })
+    });
   }
-})
+});
 
 app.post("/UpdateBulk", async (req, res) => {
   try {
