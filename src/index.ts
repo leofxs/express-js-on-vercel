@@ -108,11 +108,20 @@ app.post("/UpdateOne", async (req, res) => {
       });
     }
 
-    // Log for debugging
-    console.log("Filter:", filter);
-    console.log("Update:", update);
+    // --- 1. Normalize array fields before update ---
+    // For example, ensure 'history' is an array
+    const doc = await collection.findOne(filter);
+    if (doc) {
+      // Normalize 'history'
+      if (doc.history && !Array.isArray(doc.history)) {
+        await collection.updateOne(filter, { $set: { history: [doc.history] } });
+      }
 
-    // Logging special event if quantitySold is incremented
+      // Optionally, normalize other fields like serials[x].h if needed
+      // Example: check serials array exists and convert object to array if needed
+    }
+
+    // --- 2. Logging special event if quantitySold is incremented ---
     try {
       const quantityInc = update["$inc"]?.quantitySold;
       const serialsPush = update["$push"]?.serials;
@@ -123,16 +132,10 @@ app.post("/UpdateOne", async (req, res) => {
       console.error("Logging error:", err);
     }
 
-    // Perform the update
-    let result;
-    try {
-      result = await collection.findOneAndUpdate(filter, update, {
-        returnDocument: "after", // For MongoDB Node.js driver v4+
-      });
-    } catch (err) {
-      console.error("MongoDB update error:", err);
-      throw err; // rethrow to be caught by outer try/catch
-    }
+    // --- 3. Perform the update safely ---
+    const result = await collection.findOneAndUpdate(filter, update, {
+      returnDocument: "after", // MongoDB Node.js driver v4+
+    });
 
     if (!result.value) {
       return res.status(404).json({
@@ -146,14 +149,17 @@ app.post("/UpdateOne", async (req, res) => {
       message: "Update successful",
       data: result.value,
     });
+
   } catch (error) {
-    console.error("Internal Error:", error); // This will now print the real error
+    console.error("Internal Error:", error);
     return res.status(500).json({
       status: "error",
       message: "Internal Server Error",
+      error: error.message, // optional: include the exact MongoDB error for debugging
     });
   }
 });
+
 
 app.post("/UpdateBulk", async (req, res) => {
   try {
