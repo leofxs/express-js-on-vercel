@@ -111,18 +111,16 @@ app.post("/UpdateOne", async (req, res) => {
       });
     }
 
-    // --- 1. Normalize array fields before update ---
-    // For example, ensure 'history' is an array
     const doc = await collection.findOne(filter);
-    if (doc) {
-      // Normalize 'history'
-      if (doc.history && !Array.isArray(doc.history)) {
-        await collection.updateOne(filter, { $set: { history: [doc.history] } });
-      }
-
-      // Optionally, normalize other fields like serials[x].h if needed
-      // Example: check serials array exists and convert object to array if needed
-    }
+if (doc) {
+  if (!Array.isArray(doc.history) && doc.history) {
+    await collection.updateOne(filter, { $set: { history: [doc.history] } });
+  }
+  if (!Array.isArray(doc.serials) && doc.serials) {
+    await collection.updateOne(filter, { $set: { serials: [doc.serials] } });
+  }
+}
+    
 
     // --- 2. Logging special event if quantitySold is incremented ---
     try {
