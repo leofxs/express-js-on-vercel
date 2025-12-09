@@ -142,11 +142,23 @@ app.post('/insert-item', async (req, res) => {
         description
     } = req.body;
 
-    if (!itemId || !originalPrice || !totalQuantity || !creator || !name || description === undefined) {
+   itemId = Number(itemId);
+    originalPrice = Number(originalPrice);
+    totalQuantity = Number(totalQuantity);
+
+    if (
+        isNaN(itemId) ||
+        isNaN(originalPrice) ||
+        isNaN(totalQuantity) ||
+        !creator ||
+        !name ||
+        description === undefined
+    ) {
         return res.status(400).json({
-            error: "Missing required fields: itemId, originalPrice, totalQuantity, creator, name, description"
+            error: "Invalid or missing fields"
         });
     }
+
     const itemData = {
         name,
         description,
