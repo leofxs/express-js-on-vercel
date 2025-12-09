@@ -86,6 +86,50 @@ curl -X POST https://your-domain/update-item \\
   `)
 })
 
+app.post("/update-value", async (req, res) => {
+    const client = await getMongoClient(); 
+
+    const { itemId, value } = req.body;
+
+    if (!itemId || value === undefined) {
+        return res.status(400).json({
+            error: "Missing required fields: itemId, value"
+        });
+    }
+
+    try {
+        const db = client.db("cool");
+        const items = db.collection("cp");
+
+        const updateResult = await items.updateOne(
+            { itemId: itemId },
+            { $set: { value: value } }
+        );
+
+        if (updateResult.matchedCount === 0) {
+            return res.status(404).json({
+                error: "Item not found",
+                itemId
+            });
+        }
+
+        const updatedItem = await items.findOne({ itemId: itemId });
+
+        res.status(200).json({
+            message: "Item value updated successfully",
+            updatedItem
+        });
+
+    } catch (err: any) {
+        console.error("MongoDB error:", err);
+        res.status(500).json({
+            error: "MongoDB error",
+            details: err.message
+        });
+    }
+});
+
+
 app.post('/insert-item', async (req, res) => {
     const client = await getMongoClient();
 
