@@ -159,19 +159,19 @@ app.post('/insert-item', async (req, res) => {
         });
     }
 
-    const itemData = {
+      const itemData = {
         name,
         description,
-        itemId,
+        Number(itemId),
         type: "unique",
-        originalPrice,
-        totalQuantity,
+        Number(originalPrice),
+        Number(totalQuantity),
         tradeable: true,
         creator,
         quantitySold: 0,
         rap: 0,
         value: 0,
-        serials: [],
+        serials: [], 
         reselling: {},
         history: {
             rap: [],
@@ -181,7 +181,7 @@ app.post('/insert-item', async (req, res) => {
         releaseTime: Math.floor(Date.now() / 1000),
         offsaleTime: 0
     };
-  
+
     try {
         const db = client.db("cool");
         const items = db.collection("cp");
